@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::error::Error;
 use serde_json::value::Value;
+use json_patch::Patch;
 
 #[get("/health")]
 fn health() -> Status {
@@ -29,9 +30,17 @@ fn save_json(file: String, json: Json<Value>) -> Result<(), Box<dyn Error>> {
     write_json_file(&path, &json)
 }
 
+#[patch("/<file>", data = "<patch>", format = "application/json-patch+json")]
+fn patch_json(file: String, patch: Json<Patch>) -> Result<(), Box<dyn Error>> {
+    let path = json_file_path(&file);
+    let mut json = read_json_file(&path)?;
+    json_patch::patch(&mut json, &patch)?;
+    write_json_file(&path, &json)
+}
+
 fn rocket() -> Rocket {
     rocket::ignite()
-        .mount("/", routes![health, read_json, save_json])
+        .mount("/", routes![health, read_json, save_json, patch_json])
 }
 
 fn main() {
